@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initDatabase } from './src/database/db';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoadingSpinner from './src/components/LoadingSpinner';
@@ -32,9 +33,9 @@ export default function App() {
   }
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="light" />
       <AppNavigator />
-    </>
+    </SafeAreaProvider>
   );
 }
