@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Tiempo",
+    "slug": "tiempo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#264653"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cobbinma.tiempo"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#264653"
+      },
+      "package": "com.cobbinma.tiempo",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-asset",
+        {
+          "assets": ["./assets/database"]
+        }
+      ]
+    ]
+  }
+}
