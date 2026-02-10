@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { Asset } from 'expo-asset';
-import { File, Paths } from 'expo-file-system/next';
+import * as FileSystem from 'expo-file-system/legacy';
 import {
   Verb,
   Conjugation,
@@ -19,41 +19,44 @@ let db: SQLite.SQLiteDatabase | null = null;
  */
 export async function initDatabase(): Promise<void> {
   try {
-    const dbPath = `${Paths.document}/SQLite/${DB_NAME}`;
-    const dbDir = `${Paths.document}/SQLite`;
+    // Open or create the database - expo-sqlite will handle creation
+    // We need to copy our pre-populated database from assets
+    const dbDir = `${FileSystem.documentDirectory}SQLite`;
+    const dbPath = `${dbDir}/${DB_NAME}`;
 
-    // Ensure SQLite directory exists
-    try {
-      const dir = new File(dbDir);
-      if (!(await dir.exists())) {
-        await dir.create({ type: 'directory' });
-      }
-    } catch (err) {
-      // Directory might already exist, that's okay
-      console.log('Directory might already exist:', err);
+    // Create SQLite directory if it doesn't exist
+    const dirInfo = await FileSystem.getInfoAsync(dbDir);
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(dbDir, { intermediates: true });
+      console.log('📁 Created SQLite directory');
     }
 
-    // Check if database already exists
-    const dbFile = new File(dbPath);
-    const exists = await dbFile.exists();
+    // Check if database file exists
+    const fileInfo = await FileSystem.getInfoAsync(dbPath);
     
-    if (!exists) {
-      // Database doesn't exist, copy from assets
+    if (!fileInfo.exists) {
       console.log('📦 Copying database from assets...');
       
+      // Load the asset
       const asset = Asset.fromModule(require('../../assets/database/tiempo.db'));
       await asset.downloadAsync();
       
-      if (asset.localUri) {
-        const sourceFile = new File(asset.localUri);
-        await sourceFile.copy(dbPath);
-        console.log('✅ Database copied successfully');
-      } else {
-        throw new Error('Could not download database asset');
+      if (!asset.localUri) {
+        throw new Error('Failed to download database asset');
       }
+
+      // Copy from asset to document directory
+      await FileSystem.copyAsync({
+        from: asset.localUri,
+        to: dbPath,
+      });
+      
+      console.log('✅ Database copied successfully');
+    } else {
+      console.log('📊 Database already exists');
     }
 
-    // Open database
+    // Open the database
     db = await SQLite.openDatabaseAsync(DB_NAME);
     console.log('✅ Database initialized');
   } catch (error) {
