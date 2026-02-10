@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
+import { File, Paths } from 'expo-file-system/next';
 import {
   Verb,
   Conjugation,
@@ -19,19 +19,25 @@ let db: SQLite.SQLiteDatabase | null = null;
  */
 export async function initDatabase(): Promise<void> {
   try {
-    const dbPath = `${FileSystem.documentDirectory}SQLite/${DB_NAME}`;
-    const dbDir = `${FileSystem.documentDirectory}SQLite`;
+    const dbPath = `${Paths.document}/SQLite/${DB_NAME}`;
+    const dbDir = `${Paths.document}/SQLite`;
 
     // Ensure SQLite directory exists
-    const dirInfo = await FileSystem.getInfoAsync(dbDir);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(dbDir, { intermediates: true });
+    try {
+      const dir = new File(dbDir);
+      if (!(await dir.exists())) {
+        await dir.create({ type: 'directory' });
+      }
+    } catch (err) {
+      // Directory might already exist, that's okay
+      console.log('Directory might already exist:', err);
     }
 
     // Check if database already exists
-    const fileInfo = await FileSystem.getInfoAsync(dbPath);
+    const dbFile = new File(dbPath);
+    const exists = await dbFile.exists();
     
-    if (!fileInfo.exists) {
+    if (!exists) {
       // Database doesn't exist, copy from assets
       console.log('📦 Copying database from assets...');
       
@@ -39,10 +45,8 @@ export async function initDatabase(): Promise<void> {
       await asset.downloadAsync();
       
       if (asset.localUri) {
-        await FileSystem.copyAsync({
-          from: asset.localUri,
-          to: dbPath,
-        });
+        const sourceFile = new File(asset.localUri);
+        await sourceFile.copy(dbPath);
         console.log('✅ Database copied successfully');
       } else {
         throw new Error('Could not download database asset');
