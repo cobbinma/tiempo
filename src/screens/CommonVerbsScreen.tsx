@@ -131,15 +131,6 @@ export default function CommonVerbsScreen({ navigation }: CommonVerbsScreenProps
     navigation.navigate('QuizSetup', { verb: verb.infinitive });
   };
 
-  const renderHeader = () => (
-    <View style={styles.listHeader}>
-      <Text style={[styles.listHeaderTitle, { color: colors.text }]}>🌟 Top 100 Verbs</Text>
-      <Text style={[styles.listHeaderDescription, { color: colors.textLight }]}>
-        Master the most frequently used verbs in Spanish conversation
-      </Text>
-    </View>
-  );
-
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -182,7 +173,6 @@ export default function CommonVerbsScreen({ navigation }: CommonVerbsScreenProps
             onPracticePress={handlePracticePress}
           />
         )}
-        ListHeaderComponent={renderHeader}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={true}
         initialNumToRender={15}
@@ -235,21 +225,6 @@ const styles = StyleSheet.create({
   listContent: {
     padding: SPACING.lg,
     paddingBottom: SPACING.xl,
-  },
-  listHeader: {
-    marginBottom: SPACING.md,
-    marginTop: SPACING.sm,
-  },
-  listHeaderTitle: {
-    fontSize: FONT_SIZES.xxxl,
-    fontWeight: FONT_WEIGHTS.extrabold,
-    marginBottom: SPACING.sm,
-    letterSpacing: -0.5,
-  },
-  listHeaderDescription: {
-    fontSize: FONT_SIZES.md,
-    lineHeight: 22,
-    opacity: 0.8,
   },
   statsRow: {
     flexDirection: 'row',
