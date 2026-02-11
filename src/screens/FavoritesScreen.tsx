@@ -202,10 +202,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
   verbContent: {
     flexDirection: 'row',
     alignItems: 'center',
