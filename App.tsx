@@ -6,26 +6,11 @@ import { favoritesStore } from './src/store/favoritesStore';
 import { themeStore } from './src/store/themeStore';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoadingSpinner from './src/components/LoadingSpinner';
-import { useTheme } from './src/hooks/useTheme';
-
-function AppContent() {
-  const { isDark } = useTheme();
-  
-  return (
-    <>
-      <StatusBar 
-        barStyle={isDark ? 'light-content' : 'dark-content'} 
-        backgroundColor="transparent"
-        translucent
-      />
-      <AppNavigator />
-    </>
-  );
-}
 
 export default function App() {
   const [dbReady, setDbReady] = useState(false);
   const [dbError, setDbError] = useState(null);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -33,13 +18,26 @@ export default function App() {
         await initDatabase();
         await favoritesStore.initialize();
         await themeStore.initialize();
+        setIsDark(themeStore.isDark());
         setDbReady(true);
+        
+        // Subscribe to theme changes
+        const unsubscribe = themeStore.subscribe(() => {
+          setIsDark(themeStore.isDark());
+        });
+        
+        return unsubscribe;
       } catch (err) {
         console.error('Failed to initialize app:', err);
         setDbError('Failed to initialize app. Please restart.');
       }
     };
-    init();
+    
+    const cleanupPromise = init();
+    
+    return () => {
+      cleanupPromise.then(cleanup => cleanup && cleanup());
+    };
   }, []);
 
   if (dbError) {
@@ -56,7 +54,12 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AppContent />
+      <StatusBar 
+        barStyle={isDark ? 'light-content' : 'dark-content'} 
+        backgroundColor="transparent"
+        translucent
+      />
+      <AppNavigator />
     </SafeAreaProvider>
   );
 }
