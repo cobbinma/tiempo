@@ -20,7 +20,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const wiggleAnim = useRef(new Animated.Value(0)).current;
   const floatAnim1 = useRef(new Animated.Value(0)).current;
   const floatAnim2 = useRef(new Animated.Value(0)).current;
   const floatAnim3 = useRef(new Animated.Value(0)).current;
@@ -52,28 +51,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         useNativeDriver: true,
       }),
     ]).start();
-
-    // Wiggle animation for logo
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(wiggleAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(wiggleAnim, {
-          toValue: -1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(wiggleAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.delay(3000),
-      ])
-    ).start();
 
     // Floating blob animations
     Animated.loop(
@@ -164,11 +141,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     };
   }, []);
 
-  const wiggleRotation = wiggleAnim.interpolate({
-    inputRange: [-1, 1],
-    outputRange: ['-8deg', '8deg'],
-  });
-
   const float1Y = floatAnim1.interpolate({
     inputRange: [0, 1],
     outputRange: [0, -30],
@@ -244,15 +216,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 },
               ]}
             >
-              {/* Logo with wiggle animation */}
-              <Animated.View
-                style={[
-                  styles.logoContainer,
-                  { transform: [{ rotate: wiggleRotation }] },
-                ]}
-              >
-                <Logo size={80} showText={false} />
-              </Animated.View>
+              {/* Logo - static */}
+              <View style={styles.logoContainer}>
+                <Logo size={110} showText={false} />
+              </View>
               
               {/* Title with emojis */}
               <View style={styles.titleContainer}>
