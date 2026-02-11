@@ -1,18 +1,21 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types';
+import { useQuizSession } from '../hooks/useQuizSession';
 import CustomButton from '../components/CustomButton';
 import Card from '../components/Card';
 import { getScoreMessage, getScoreColor } from '../utils/validation';
 import { COLORS, SPACING, FONT_SIZES, FONT_WEIGHTS, BORDER_RADIUS } from '../constants/Colors';
+import ConfettiCannon from 'react-native-confetti-cannon';
 
 type ResultsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Results'>;
 type ResultsScreenRouteProp = RouteProp<RootStackParamList, 'Results'>;
@@ -23,23 +26,49 @@ interface ResultsScreenProps {
 }
 
 export default function ResultsScreen({ navigation, route }: ResultsScreenProps) {
-  const { session } = route.params;
-  const { score, results, questions } = session;
+  const { currentSession, setCurrentSession } = useQuizSession();
+  const confettiRef = useRef<any>(null);
+  
+  // Redirect if no session
+  useEffect(() => {
+    if (!currentSession) {
+      navigation.navigate('Home');
+    }
+  }, [currentSession, navigation]);
+
+  // Don't render if no session
+  if (!currentSession) {
+    return null;
+  }
+
+  const { score, results, questions } = currentSession;
   
   const totalQuestions = questions.length;
   const percentage = Math.round((score / totalQuestions) * 100);
   const scoreColor = getScoreColor(percentage);
   const scoreMessage = getScoreMessage(percentage);
+  const isPerfectScore = percentage === 100;
+
+  // Trigger confetti for perfect score
+  useEffect(() => {
+    if (isPerfectScore && confettiRef.current) {
+      // Small delay to let the screen render first
+      setTimeout(() => {
+        confettiRef.current?.start();
+      }, 300);
+    }
+  }, [isPerfectScore]);
 
   const handleTryAgain = () => {
     // Recreate the quiz with the same configuration
     const newSession = {
-      ...session,
+      ...currentSession,
       results: [],
       currentQuestionIndex: 0,
       score: 0,
     };
-    navigation.replace('Quiz', { session: newSession });
+    setCurrentSession(newSession);
+    navigation.replace('Quiz');
   };
 
   const handleNewQuiz = () => {
@@ -52,9 +81,39 @@ export default function ResultsScreen({ navigation, route }: ResultsScreenProps)
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Confetti animation for perfect score */}
+      {isPerfectScore && (
+        <ConfettiCannon
+          ref={confettiRef}
+          count={200}
+          origin={{ x: -10, y: 0 }}
+          autoStart={false}
+          fadeOut={true}
+          explosionSpeed={350}
+          fallSpeed={2500}
+          colors={[COLORS.primary, COLORS.secondary, COLORS.accent1, COLORS.accent2, '#FF8B94', '#A8E6CF']}
+        />
+      )}
+
+      {/* Header with home button */}
+      <View style={styles.header}>
+        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>Quiz Results</Text>
+        <TouchableOpacity onPress={handleHome} style={styles.homeButton}>
+          <Text style={styles.homeButtonText}>🏠</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Score summary */}
         <Card style={styles.summaryCard}>
+          {isPerfectScore && (
+            <View style={styles.perfectScoreBanner}>
+              <Text style={styles.perfectScoreEmoji}>🎉</Text>
+              <Text style={styles.perfectScoreTitle}>¡PERFECTO!</Text>
+              <Text style={styles.perfectScoreText}>You got every answer correct!</Text>
+            </View>
+          )}
           <Text style={styles.scoreMessage}>{scoreMessage}</Text>
           <View style={[styles.scoreCircle, { borderColor: scoreColor }]}>
             <Text style={[styles.scorePercentage, { color: scoreColor }]}>
@@ -153,6 +212,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.white,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  homeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.backgroundDark,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  homeButtonText: {
+    fontSize: FONT_SIZES.xl,
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: FONT_WEIGHTS.bold,
+    color: COLORS.text,
+  },
+  headerSpacer: {
+    width: 40,
+  },
   scrollContent: {
     padding: SPACING.md,
   },
@@ -160,6 +248,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: SPACING.xl,
     marginBottom: SPACING.lg,
+  },
+  perfectScoreBanner: {
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+    padding: SPACING.md,
+    backgroundColor: '#FFF9E6',
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 2,
+    borderColor: COLORS.warning,
+    width: '100%',
+  },
+  perfectScoreEmoji: {
+    fontSize: 48,
+    marginBottom: SPACING.xs,
+  },
+  perfectScoreTitle: {
+    fontSize: FONT_SIZES.xxl,
+    fontWeight: FONT_WEIGHTS.extrabold,
+    color: COLORS.primary,
+    marginBottom: SPACING.xs,
+  },
+  perfectScoreText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text,
+    textAlign: 'center',
   },
   scoreMessage: {
     fontSize: FONT_SIZES.xxl,

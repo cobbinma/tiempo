@@ -1,0 +1,286 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList, Verb } from '../types';
+import { getVerbsByInfinitives } from '../database/db';
+import { useFavorites } from '../hooks/useFavorites';
+import LoadingSpinner from '../components/LoadingSpinner';
+import Card from '../components/Card';
+import CustomButton from '../components/CustomButton';
+import { COLORS, SPACING, FONT_SIZES, FONT_WEIGHTS, BORDER_RADIUS } from '../constants/Colors';
+import { useTheme } from '../hooks/useTheme';
+
+type FavoritesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Favorites'>;
+
+interface FavoritesScreenProps {
+  navigation: FavoritesScreenNavigationProp;
+}
+
+export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
+  const { favorites } = useFavorites();
+  const [verbs, setVerbs] = useState<Verb[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { colors } = useTheme();
+
+  useEffect(() => {
+    loadFavoriteVerbs();
+  }, [favorites]);
+
+  const loadFavoriteVerbs = async () => {
+    try {
+      setLoading(true);
+      if (favorites.length === 0) {
+        setVerbs([]);
+        return;
+      }
+      const favoriteVerbs = await getVerbsByInfinitives(favorites);
+      setVerbs(favoriteVerbs);
+    } catch (error) {
+      console.error('Error loading favorite verbs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerbPress = (infinitive: string) => {
+    navigation.navigate('VerbDetail', { infinitive });
+  };
+
+  const handlePracticeFavorites = () => {
+    if (favorites.length > 0) {
+      navigation.navigate('QuizSetup', { favoritesOnly: true });
+    }
+  };
+
+  const renderVerb = ({ item }: { item: Verb }) => (
+    <TouchableOpacity
+      style={[styles.verbItem, { backgroundColor: colors.card }]}
+      onPress={() => handleVerbPress(item.infinitive)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.verbContent}>
+        <View style={styles.starContainer}>
+          <Text style={styles.starIcon}>★</Text>
+        </View>
+        <View style={styles.verbTextContainer}>
+          <Text style={[styles.infinitive, { color: colors.text }]}>{item.infinitive}</Text>
+          <Text style={[styles.translation, { color: colors.textLight }]}>{item.translation}</Text>
+        </View>
+        <View style={styles.verbActions}>
+          <TouchableOpacity
+            style={styles.viewButton}
+            onPress={() => handleVerbPress(item.infinitive)}
+          >
+            <Text style={styles.viewButtonText}>View All</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.practiceButton}
+            onPress={() => navigation.navigate('QuizSetup', { verb: item.infinitive })}
+          >
+            <Text style={styles.practiceButtonText}>Practice</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderEmpty = () => (
+    <Card style={styles.emptyCard}>
+      <Text style={styles.emptyIcon}>⭐</Text>
+      <Text style={styles.emptyTitle}>No Favorites Yet</Text>
+      <Text style={styles.emptyText}>
+        Star your favorite verbs to save them here for quick access and practice.
+      </Text>
+      <CustomButton
+        title="Browse Verbs"
+        onPress={() => navigation.navigate('Search')}
+        variant="primary"
+        size="large"
+        style={styles.browseButton}
+      />
+    </Card>
+  );
+
+  if (loading) {
+    return <LoadingSpinner message="Loading favorites..." />;
+  }
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header with back button */}
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backButtonText}>←</Text>
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Favorite Verbs</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      {verbs.length > 0 && (
+        <View style={styles.practiceAllContainer}>
+          <CustomButton
+            title={`Practice All Favorites (${favorites.length})`}
+            onPress={handlePracticeFavorites}
+            variant="secondary"
+            size="large"
+          />
+        </View>
+      )}
+
+      <FlatList
+        data={verbs}
+        renderItem={renderVerb}
+        keyExtractor={(item) => item.infinitive}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={renderEmpty}
+        showsVerticalScrollIndicator={false}
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.white,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    zIndex: 10,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.backgroundDark,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backButtonText: {
+    fontSize: FONT_SIZES.xxl,
+    color: COLORS.text,
+    fontWeight: FONT_WEIGHTS.bold,
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: FONT_WEIGHTS.bold,
+    color: COLORS.text,
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  practiceAllContainer: {
+    padding: SPACING.lg,
+    paddingBottom: SPACING.md,
+  },
+  listContent: {
+    padding: SPACING.lg,
+    paddingTop: SPACING.md,
+  },
+  verbItem: {
+    borderRadius: BORDER_RADIUS.lg,
+    marginBottom: SPACING.md,
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  verbContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.lg,
+    gap: SPACING.md,
+  },
+  starContainer: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  starIcon: {
+    fontSize: 24,
+    color: COLORS.warning,
+  },
+  verbTextContainer: {
+    flex: 1,
+  },
+  infinitive: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: FONT_WEIGHTS.semibold,
+    marginBottom: 2,
+  },
+  translation: {
+    fontSize: FONT_SIZES.sm,
+  },
+  verbActions: {
+    gap: SPACING.xs,
+  },
+  viewButton: {
+    backgroundColor: COLORS.backgroundDark,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  viewButtonText: {
+    color: COLORS.text,
+    fontSize: FONT_SIZES.xs,
+    fontWeight: FONT_WEIGHTS.semibold,
+  },
+  practiceButton: {
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  practiceButtonText: {
+    color: COLORS.white,
+    fontSize: FONT_SIZES.xs,
+    fontWeight: FONT_WEIGHTS.semibold,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    padding: SPACING.xl,
+    marginTop: SPACING.xxl,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: SPACING.lg,
+  },
+  emptyTitle: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: FONT_WEIGHTS.bold,
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  emptyText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textLight,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: SPACING.lg,
+  },
+  browseButton: {
+    marginTop: SPACING.md,
+  },
+});

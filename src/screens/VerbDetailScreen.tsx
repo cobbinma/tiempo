@@ -15,6 +15,9 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import CustomButton from '../components/CustomButton';
 import Card from '../components/Card';
 import { COLORS, SPACING, FONT_SIZES, FONT_WEIGHTS, BORDER_RADIUS } from '../constants/Colors';
+import { useFavorites } from '../hooks/useFavorites';
+import { speakSpanish } from '../utils/speech';
+import { useTheme } from '../hooks/useTheme';
 
 type VerbDetailScreenNavigationProp = StackNavigationProp<RootStackParamList, 'VerbDetail'>;
 type VerbDetailScreenRouteProp = RouteProp<RootStackParamList, 'VerbDetail'>;
@@ -30,6 +33,8 @@ export default function VerbDetailScreen({ navigation, route }: VerbDetailScreen
   const [translation, setTranslation] = useState('');
   const [conjugations, setConjugations] = useState<ConjugationsByMood>({});
   const [selectedMood, setSelectedMood] = useState('Indicativo');
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const { colors } = useTheme();
 
   useEffect(() => {
     loadVerbData();
@@ -55,6 +60,22 @@ export default function VerbDetailScreen({ navigation, route }: VerbDetailScreen
     navigation.navigate('QuizSetup', { verb: infinitive });
   };
 
+  const handlePracticeTense = (mood: string, tense: string) => {
+    navigation.navigate('QuizSetup', { verb: infinitive, mood, tense });
+  };
+
+  const handleToggleFavorite = () => {
+    toggleFavorite(infinitive);
+  };
+
+  const speakInfinitive = () => {
+    speakSpanish(infinitive);
+  };
+
+  const speakConjugation = (conjugatedForm: string) => {
+    speakSpanish(conjugatedForm);
+  };
+
   if (loading) {
     return <LoadingSpinner message="Loading verb..." />;
   }
@@ -63,15 +84,32 @@ export default function VerbDetailScreen({ navigation, route }: VerbDetailScreen
   const currentConjugations = conjugations[selectedMood] || {};
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header with back button */}
+      <View style={[styles.topHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backButtonText}>←</Text>
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Verb Conjugations</Text>
+        <TouchableOpacity onPress={handleToggleFavorite} style={styles.favoriteButton}>
+          <Text style={styles.favoriteButtonText}>
+            {isFavorite(infinitive) ? '★' : '☆'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView>
-        <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={speakInfinitive} 
+          style={styles.header}
+          activeOpacity={0.7}
+        >
           <Text style={styles.infinitive}>{infinitive}</Text>
           <Text style={styles.translation}>{translation}</Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Mood tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodTabs}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.moodTabs, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
           {moods.map((mood) => (
             <TouchableOpacity
               key={mood}
@@ -84,6 +122,7 @@ export default function VerbDetailScreen({ navigation, route }: VerbDetailScreen
               <Text
                 style={[
                   styles.moodTabText,
+                  { color: selectedMood === mood ? COLORS.secondary : colors.textLight },
                   selectedMood === mood && styles.moodTabTextActive,
                 ]}
               >
@@ -97,12 +136,25 @@ export default function VerbDetailScreen({ navigation, route }: VerbDetailScreen
         <View style={styles.tablesContainer}>
           {Object.entries(currentConjugations).map(([tense, forms]) => (
             <Card key={tense} style={styles.tenseCard}>
-              <Text style={styles.tenseTitle}>{tense}</Text>
+              <View style={styles.tenseHeader}>
+                <Text style={styles.tenseTitle}>{tense}</Text>
+                <TouchableOpacity 
+                  onPress={() => handlePracticeTense(selectedMood, tense)}
+                  style={styles.practiceTenseButton}
+                >
+                  <Text style={styles.practiceTenseText}>Practice</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.table}>
                 {forms.map((conj: Conjugation) => (
-                  <View key={conj.id} style={styles.tableRow}>
-                    <Text style={styles.performer}>{conj.performer}</Text>
-                    <Text style={styles.conjugatedForm}>{conj.conjugated_form}</Text>
+                  <View key={conj.id} style={[styles.tableRow, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.performer, { color: colors.textLight }]}>{conj.performer}</Text>
+                    <TouchableOpacity 
+                      onPress={() => speakConjugation(conj.conjugated_form)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.conjugatedForm, { color: colors.text }]}>{conj.conjugated_form}</Text>
+                    </TouchableOpacity>
                   </View>
                 ))}
               </View>
@@ -126,13 +178,49 @@ export default function VerbDetailScreen({ navigation, route }: VerbDetailScreen
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+  },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.backgroundDark,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backButtonText: {
+    fontSize: FONT_SIZES.xxl,
+    color: COLORS.text,
+    fontWeight: FONT_WEIGHTS.bold,
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: FONT_WEIGHTS.bold,
+  },
+  favoriteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  favoriteButtonText: {
+    fontSize: 28,
+    color: COLORS.warning,
   },
   header: {
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.xl,
     paddingHorizontal: SPACING.lg,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   infinitive: {
     fontSize: FONT_SIZES.xxl,
@@ -146,9 +234,7 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   moodTabs: {
-    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   moodTab: {
     paddingVertical: SPACING.md,
@@ -161,11 +247,9 @@ const styles = StyleSheet.create({
   },
   moodTabText: {
     fontSize: FONT_SIZES.md,
-    color: COLORS.textLight,
     fontWeight: FONT_WEIGHTS.medium,
   },
   moodTabTextActive: {
-    color: COLORS.secondary,
     fontWeight: FONT_WEIGHTS.semibold,
   },
   tablesContainer: {
@@ -175,11 +259,27 @@ const styles = StyleSheet.create({
   tenseCard: {
     marginBottom: SPACING.sm,
   },
+  tenseHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
   tenseTitle: {
     fontSize: FONT_SIZES.lg,
     fontWeight: FONT_WEIGHTS.semibold,
     color: COLORS.primary,
-    marginBottom: SPACING.md,
+  },
+  practiceTenseButton: {
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  practiceTenseText: {
+    color: COLORS.white,
+    fontSize: FONT_SIZES.sm,
+    fontWeight: FONT_WEIGHTS.semibold,
   },
   table: {
     gap: SPACING.sm,
@@ -190,19 +290,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SPACING.xs,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   performer: {
     fontSize: FONT_SIZES.md,
-    color: COLORS.textLight,
     flex: 1,
   },
   conjugatedForm: {
     fontSize: FONT_SIZES.md,
     fontWeight: FONT_WEIGHTS.medium,
-    color: COLORS.text,
-    flex: 1,
-    textAlign: 'right',
   },
   footer: {
     padding: SPACING.lg,

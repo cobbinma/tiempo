@@ -4,13 +4,16 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
 import { COLORS } from '../constants/Colors';
 
-// Import screens (we'll create these next)
+// Import screens
 import HomeScreen from '../screens/HomeScreen';
 import SearchScreen from '../screens/SearchScreen';
+import CommonVerbsScreen from '../screens/CommonVerbsScreen';
+import FavoritesScreen from '../screens/FavoritesScreen';
 import VerbDetailScreen from '../screens/VerbDetailScreen';
 import QuizSetupScreen from '../screens/QuizSetupScreen';
 import QuizScreen from '../screens/QuizScreen';
 import ResultsScreen from '../screens/ResultsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -20,13 +23,7 @@ export default function AppNavigator() {
       <Stack.Navigator
         initialRouteName="Home"
         screenOptions={{
-          headerStyle: {
-            backgroundColor: COLORS.primary,
-          },
-          headerTintColor: COLORS.white,
-          headerTitleStyle: {
-            fontWeight: '600',
-          },
+          headerShown: false,
           cardStyle: {
             backgroundColor: COLORS.background,
           },
@@ -35,32 +32,40 @@ export default function AppNavigator() {
         <Stack.Screen
           name="Home"
           component={HomeScreen}
-          options={{ title: 'Tiempo' }}
         />
         <Stack.Screen
           name="Search"
           component={SearchScreen}
-          options={{ title: 'Search Verbs' }}
+        />
+        <Stack.Screen
+          name="CommonVerbs"
+          component={CommonVerbsScreen}
+        />
+        <Stack.Screen
+          name="Favorites"
+          component={FavoritesScreen}
         />
         <Stack.Screen
           name="VerbDetail"
           component={VerbDetailScreen}
-          options={{ title: 'Verb Conjugations' }}
         />
         <Stack.Screen
           name="QuizSetup"
           component={QuizSetupScreen}
-          options={{ title: 'Setup Quiz' }}
         />
         <Stack.Screen
           name="Quiz"
           component={QuizScreen}
-          options={{ title: 'Quiz', headerLeft: () => null }} // Prevent going back during quiz
+          options={{ gestureEnabled: false }}
         />
         <Stack.Screen
           name="Results"
           component={ResultsScreen}
-          options={{ title: 'Quiz Results', headerLeft: () => null }}
+          options={{ gestureEnabled: false }}
+        />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
         />
       </Stack.Navigator>
     </NavigationContainer>

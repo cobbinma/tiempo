@@ -6,24 +6,24 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#264653"
+      "backgroundColor": "#FF6B6B"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cobbinma.tiempo"
+      "bundleIdentifier": "com.cobbinma.tiempo",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#264653"
+        "backgroundColor": "#FF6B6B"
       },
-      "package": "com.cobbinma.tiempo",
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "com.cobbinma.tiempo"
     },
     "web": {
       "favicon": "./assets/favicon.png"

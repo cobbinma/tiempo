@@ -30,7 +30,9 @@ export interface QuizConfig {
   verb?: string; // Specific verb infinitive or undefined for random
   moods: string[];
   tenses: string[];
-  questionCount: number;
+  questionCount?: number; // Optional - if not provided, use all matching conjugations
+  favoritesOnly?: boolean; // Only quiz on favorite verbs
+  favoriteInfinitives?: string[]; // Array of favorite verb infinitives (used when favoritesOnly is true)
 }
 
 export interface QuizQuestion {
@@ -61,8 +63,11 @@ export interface QuizSession {
 export type RootStackParamList = {
   Home: undefined;
   Search: undefined;
+  CommonVerbs: undefined;
+  Favorites: undefined;
   VerbDetail: { infinitive: string };
-  QuizSetup: { verb?: string };
-  Quiz: { session: QuizSession };
-  Results: { session: QuizSession };
+  QuizSetup: { verb?: string; mood?: string; tense?: string; favoritesOnly?: boolean };
+  Quiz: undefined;
+  Results: undefined;
+  Settings: undefined;
 };

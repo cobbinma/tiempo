@@ -61,10 +61,10 @@ export default function CustomButton({
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.small,
+    ...SHADOWS.medium,
   },
   button_primary: {
     backgroundColor: COLORS.primary,
@@ -73,13 +73,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary,
   },
   button_outline: {
-    backgroundColor: COLORS.transparent,
+    backgroundColor: COLORS.white,
     borderWidth: 2,
     borderColor: COLORS.primary,
   },
   button_disabled: {
     backgroundColor: COLORS.border,
-    opacity: 0.6,
+    opacity: 0.5,
   },
   button_small: {
     paddingVertical: SPACING.sm,
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
   },
   text: {
-    fontWeight: '600',
+    fontWeight: '700',
   },
   text_primary: {
     color: COLORS.white,
@@ -116,5 +116,6 @@ const styles = StyleSheet.create({
   },
   text_large: {
     fontSize: FONT_SIZES.lg,
+    fontWeight: '800',
   },
 });

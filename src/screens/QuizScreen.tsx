@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,24 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  TouchableOpacity,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Alert,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList, QuizResult, QuizSession } from '../types';
+import { useQuizSession } from '../hooks/useQuizSession';
 import CustomButton from '../components/CustomButton';
 import Card from '../components/Card';
 import SpanishKeyboard from '../components/SpanishKeyboard';
 import { isAnswerCorrect } from '../utils/validation';
 import { COLORS, SPACING, FONT_SIZES, FONT_WEIGHTS, BORDER_RADIUS } from '../constants/Colors';
+import { speakSpanish } from '../utils/speech';
+import { useTheme } from '../hooks/useTheme';
 
 type QuizScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Quiz'>;
 type QuizScreenRouteProp = RouteProp<RootStackParamList, 'Quiz'>;
@@ -27,14 +35,38 @@ interface QuizScreenProps {
 }
 
 export default function QuizScreen({ navigation, route }: QuizScreenProps) {
-  const { session: initialSession } = route.params;
-  const [session, setSession] = useState<QuizSession>(initialSession);
+  const { currentSession: initialSession, setCurrentSession } = useQuizSession();
+  const { colors } = useTheme();
+  
+  const [session, setSession] = useState<QuizSession | null>(initialSession);
   const [userAnswer, setUserAnswer] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const inputRef = useRef<TextInput>(null);
   
   const feedbackScale = useRef(new Animated.Value(0)).current;
+  
+  // Keep track of the latest session state including pending updates
+  const latestSessionRef = useRef<QuizSession | null>(initialSession);
+
+  // Redirect if no session
+  useEffect(() => {
+    if (!initialSession) {
+      navigation.navigate('Home');
+    }
+  }, [initialSession, navigation]);
+  
+  // Update the ref when session changes
+  useEffect(() => {
+    if (session) {
+      latestSessionRef.current = session;
+    }
+  }, [session]);
+
+  // Don't render if no session
+  if (!session) {
+    return null;
+  }
 
   const currentQuestion = session.questions[session.currentQuestionIndex];
   const progress = ((session.currentQuestionIndex + 1) / session.questions.length) * 100;
@@ -51,15 +83,19 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
       isCorrect: correct,
     };
 
-    // Update session
+    // Update session with new result and score
     const updatedResults = [...session.results, result];
     const updatedScore = correct ? session.score + 1 : session.score;
 
-    setSession({
+    const updatedSession = {
       ...session,
       results: updatedResults,
       score: updatedScore,
-    });
+    };
+
+    // Update both state and ref immediately
+    setSession(updatedSession);
+    latestSessionRef.current = updatedSession;
 
     // Animate feedback
     Animated.spring(feedbackScale, {
@@ -77,21 +113,34 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
   };
 
   const handleNext = () => {
-    const nextIndex = session.currentQuestionIndex + 1;
+    // Always use the latest session from ref
+    const sessionToUse = latestSessionRef.current;
+    
+    // Safety check
+    if (!sessionToUse || !sessionToUse.questions) {
+      console.error('Invalid session state in handleNext');
+      return;
+    }
+    
+    const nextIndex = sessionToUse.currentQuestionIndex + 1;
 
-    if (nextIndex < session.questions.length) {
+    if (nextIndex < sessionToUse.questions.length) {
       // Move to next question
-      setSession({
-        ...session,
+      const nextSession = {
+        ...sessionToUse,
         currentQuestionIndex: nextIndex,
-      });
+      };
+      setSession(nextSession);
+      latestSessionRef.current = nextSession;
       setUserAnswer('');
       setShowFeedback(false);
       feedbackScale.setValue(0);
-      inputRef.current?.focus();
+      // Removed inputRef.current?.focus() to keep keyboard minimized
     } else {
       // Quiz complete, navigate to results
-      navigation.replace('Results', { session: { ...session, currentQuestionIndex: nextIndex } });
+      // Save the final session state to the global store
+      setCurrentSession({ ...sessionToUse, currentQuestionIndex: nextIndex });
+      navigation.replace('Results');
     }
   };
 
@@ -99,31 +148,75 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
     setUserAnswer((prev) => prev + char);
   };
 
+  const handleExit = () => {
+    Alert.alert(
+      'Exit Quiz?',
+      'Are you sure you want to quit? Your progress will be lost.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Exit',
+          style: 'destructive',
+          onPress: () => {
+            setCurrentSession(null);
+            navigation.navigate('Home');
+          },
+        },
+      ]
+    );
+  };
+
+  const speakInfinitive = () => {
+    speakSpanish(currentQuestion.infinitive);
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Progress bar */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
+        {/* Progress bar with exit button */}
+        <View style={[styles.progressContainer, { backgroundColor: colors.card }]}>
+          <View style={styles.progressHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.progressText, { color: colors.text }]}>
+                Question {session.currentQuestionIndex + 1} / {session.questions.length}
+              </Text>
+              <Text style={styles.scoreText}>
+                Score: {session.score} / {session.currentQuestionIndex + (showFeedback ? 1 : 0)}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={handleExit} style={styles.exitButton}>
+              <Text style={styles.exitButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.progressBar, { backgroundColor: colors.background }]}>
             <View style={[styles.progressFill, { width: `${progress}%` }]} />
           </View>
-          <Text style={styles.progressText}>
-            Question {session.currentQuestionIndex + 1} / {session.questions.length}
-          </Text>
-          <Text style={styles.scoreText}>
-            Score: {session.score} / {session.currentQuestionIndex + (showFeedback ? 1 : 0)}
-          </Text>
         </View>
 
-        {/* Question card */}
-        <View style={styles.content}>
-          <Card style={styles.questionCard}>
-            <View style={styles.verbInfo}>
-              <Text style={styles.infinitive}>{currentQuestion.infinitive}</Text>
-              <Text style={styles.translation}>{currentQuestion.translation}</Text>
+        {/* Question card with keyboard dismiss */}
+        <ScrollView 
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View>
+              <Card style={styles.questionCard}>
+            <View style={[styles.verbInfo, { borderBottomColor: colors.border }]}>
+              <TouchableOpacity 
+                onPress={speakInfinitive} 
+                style={styles.infinitiveRow}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.infinitive}>{currentQuestion.infinitive}</Text>
+                <Text style={styles.translation}>{currentQuestion.translation}</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.questionInfo}>
@@ -149,7 +242,6 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
               placeholderTextColor={COLORS.textLight}
               autoCapitalize="none"
               autoCorrect={false}
-              autoFocus
               editable={!showFeedback}
               onSubmitEditing={handleSubmit}
             />
@@ -164,12 +256,16 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
                 ]}
               >
                 {isCorrect ? (
-                  <Text style={styles.feedbackText}>¡Correcto!</Text>
+                  <>
+                    <Text style={styles.feedbackEmoji}>🎉</Text>
+                    <Text style={[styles.feedbackText, { color: COLORS.success }]}>¡Correcto!</Text>
+                  </>
                 ) : (
-                  <View>
-                    <Text style={styles.feedbackText}>Incorrect</Text>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={styles.feedbackEmoji}>💭</Text>
+                    <Text style={[styles.feedbackText, { color: COLORS.error }]}>Not quite</Text>
                     <Text style={styles.correctAnswer}>
-                      Correct answer: {currentQuestion.correctAnswer}
+                      Correct: {currentQuestion.correctAnswer}
                     </Text>
                   </View>
                 )}
@@ -190,7 +286,7 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
               !isCorrect && (
                 <CustomButton
                   title="Continue"
-                  onPress={handleNext}
+                  onPress={() => handleNext()}
                   variant="primary"
                   size="large"
                   style={styles.button}
@@ -198,7 +294,9 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
               )
             )}
           </Card>
-        </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
 
         {/* Spanish keyboard */}
         <SpanishKeyboard onCharacterPress={insertCharacter} />
@@ -210,132 +308,184 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   keyboardView: {
     flex: 1,
   },
   progressContainer: {
-    backgroundColor: COLORS.white,
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    padding: SPACING.lg,
+    borderBottomWidth: 0,
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
   },
   progressBar: {
-    height: 8,
-    backgroundColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.sm,
+    height: 10,
+    borderRadius: BORDER_RADIUS.round,
     overflow: 'hidden',
-    marginBottom: SPACING.sm,
   },
   progressFill: {
     height: '100%',
     backgroundColor: COLORS.secondary,
+    borderRadius: BORDER_RADIUS.round,
   },
   progressText: {
-    fontSize: FONT_SIZES.sm,
+    fontSize: FONT_SIZES.md,
     color: COLORS.text,
-    fontWeight: FONT_WEIGHTS.medium,
+    fontWeight: FONT_WEIGHTS.semibold,
   },
   scoreText: {
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.textLight,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.primary,
     marginTop: SPACING.xs,
+    fontWeight: FONT_WEIGHTS.bold,
+  },
+  exitButton: {
+    backgroundColor: COLORS.backgroundDark,
+    width: 36,
+    height: 36,
+    borderRadius: BORDER_RADIUS.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: SPACING.md,
+  },
+  exitButtonText: {
+    fontSize: FONT_SIZES.xl,
+    color: COLORS.textLight,
+    fontWeight: FONT_WEIGHTS.bold,
   },
   content: {
     flex: 1,
-    padding: SPACING.md,
+  },
+  scrollContent: {
+    padding: SPACING.lg,
+    flexGrow: 1,
   },
   questionCard: {
-    padding: SPACING.lg,
+    padding: SPACING.xl,
+    borderRadius: BORDER_RADIUS.xxl,
   },
   verbInfo: {
     alignItems: 'center',
-    marginBottom: SPACING.lg,
-    paddingBottom: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    marginBottom: SPACING.xl,
+    paddingBottom: SPACING.xl,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.borderLight,
+  },
+  infinitiveRow: {
+    alignItems: 'center',
   },
   infinitive: {
-    fontSize: FONT_SIZES.xxl,
-    fontWeight: FONT_WEIGHTS.bold,
+    fontSize: FONT_SIZES.xxxl,
+    fontWeight: FONT_WEIGHTS.extrabold,
     color: COLORS.primary,
-    marginBottom: SPACING.xs,
+    marginBottom: SPACING.sm,
   },
   translation: {
-    fontSize: FONT_SIZES.md,
+    fontSize: FONT_SIZES.lg,
     color: COLORS.textLight,
+    fontWeight: FONT_WEIGHTS.medium,
   },
   questionInfo: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: SPACING.md,
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xl,
   },
   mood: {
-    fontSize: FONT_SIZES.md,
-    fontWeight: FONT_WEIGHTS.semibold,
+    fontSize: FONT_SIZES.lg,
+    fontWeight: FONT_WEIGHTS.bold,
     color: COLORS.secondary,
+    backgroundColor: COLORS.accent2,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
   },
   tense: {
-    fontSize: FONT_SIZES.md,
-    fontWeight: FONT_WEIGHTS.semibold,
-    color: COLORS.accent2,
+    fontSize: FONT_SIZES.lg,
+    fontWeight: FONT_WEIGHTS.bold,
+    color: COLORS.primary,
+    backgroundColor: COLORS.accent1,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
   },
   performerContainer: {
     alignItems: 'center',
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xl,
   },
   performer: {
-    fontSize: FONT_SIZES.xl,
+    fontSize: FONT_SIZES.xxl,
     fontWeight: FONT_WEIGHTS.bold,
     color: COLORS.text,
   },
   performerEn: {
-    fontSize: FONT_SIZES.sm,
+    fontSize: FONT_SIZES.md,
     color: COLORS.textLight,
-    marginTop: SPACING.xs,
+    marginTop: SPACING.sm,
   },
   input: {
     backgroundColor: COLORS.white,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    fontSize: FONT_SIZES.xl,
+    borderRadius: BORDER_RADIUS.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.lg,
+    fontSize: FONT_SIZES.xxl,
     color: COLORS.text,
     textAlign: 'center',
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.lg,
+    fontWeight: FONT_WEIGHTS.semibold,
   },
   inputCorrect: {
     borderColor: COLORS.success,
-    backgroundColor: '#e8f5f3',
+    backgroundColor: '#E8F9F7',
   },
   inputIncorrect: {
     borderColor: COLORS.error,
-    backgroundColor: '#fef0ef',
+    backgroundColor: '#FFE8E8',
   },
   feedback: {
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    marginBottom: SPACING.md,
+    padding: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg,
+    marginBottom: SPACING.lg,
     alignItems: 'center',
   },
   feedbackCorrect: {
-    backgroundColor: '#e8f5f3',
+    backgroundColor: '#E8F9F7',
+    borderWidth: 2,
+    borderColor: COLORS.success,
   },
   feedbackIncorrect: {
-    backgroundColor: '#fef0ef',
+    backgroundColor: '#FFE8E8',
+    borderWidth: 2,
+    borderColor: COLORS.error,
+  },
+  feedbackEmoji: {
+    fontSize: 48,
+    marginBottom: SPACING.sm,
   },
   feedbackText: {
-    fontSize: FONT_SIZES.lg,
+    fontSize: FONT_SIZES.xl,
     fontWeight: FONT_WEIGHTS.bold,
+    marginBottom: SPACING.xs,
   },
   correctAnswer: {
-    fontSize: FONT_SIZES.md,
+    fontSize: FONT_SIZES.lg,
     color: COLORS.text,
-    marginTop: SPACING.xs,
+    marginTop: SPACING.sm,
+    fontWeight: FONT_WEIGHTS.semibold,
   },
   button: {
     marginTop: SPACING.md,

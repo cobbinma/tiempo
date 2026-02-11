@@ -9,6 +9,7 @@ import {
   QuizConfig,
   QuizQuestion,
 } from '../types';
+import { settingsStore } from '../store/settingsStore';
 
 const DB_NAME = 'tiempo.db';
 
@@ -76,21 +77,37 @@ function getDatabase(): SQLite.SQLiteDatabase {
 }
 
 /**
- * Search for verbs by infinitive (with autocomplete support)
+ * Search for verbs by infinitive or English translation (with autocomplete support)
  */
 export async function searchVerbs(query: string): Promise<Verb[]> {
-  const database = getDatabase();
-  
-  if (!query || query.trim() === '') {
-    return [];
+  try {
+    const database = getDatabase();
+    
+    if (!query || query.trim() === '') {
+      return [];
+    }
+
+    // Search both Spanish infinitive and English translation
+    const results = await database.getAllAsync<Verb>(
+      `SELECT infinitive, translation 
+       FROM verbs 
+       WHERE infinitive LIKE ? OR translation LIKE ? 
+       ORDER BY 
+         CASE 
+           WHEN infinitive LIKE ? THEN 1
+           WHEN translation LIKE ? THEN 2
+           ELSE 3
+         END,
+         infinitive 
+       LIMIT 50`,
+      [`${query}%`, `%${query}%`, `${query}%`, `${query}%`]
+    );
+
+    return results;
+  } catch (error) {
+    console.error('Error searching verbs:', error);
+    throw error;
   }
-
-  const results = await database.getAllAsync<Verb>(
-    'SELECT infinitive, translation FROM verbs WHERE infinitive LIKE ? ORDER BY infinitive LIMIT 50',
-    [`${query}%`]
-  );
-
-  return results;
 }
 
 /**
@@ -101,6 +118,25 @@ export async function getAllVerbs(): Promise<Verb[]> {
   
   const results = await database.getAllAsync<Verb>(
     'SELECT infinitive, translation FROM verbs ORDER BY infinitive'
+  );
+
+  return results;
+}
+
+/**
+ * Get verbs by a list of infinitives (for favorites)
+ */
+export async function getVerbsByInfinitives(infinitives: string[]): Promise<Verb[]> {
+  if (infinitives.length === 0) {
+    return [];
+  }
+
+  const database = getDatabase();
+  const placeholders = infinitives.map(() => '?').join(', ');
+  
+  const results = await database.getAllAsync<Verb>(
+    `SELECT infinitive, translation FROM verbs WHERE infinitive IN (${placeholders}) ORDER BY infinitive`,
+    infinitives
   );
 
   return results;
@@ -128,10 +164,13 @@ export async function getVerbConjugations(
 ): Promise<ConjugationsByMood> {
   const database = getDatabase();
   
+  // Get settings to check if vosotros should be included
+  const settings = settingsStore.getSettings();
+  
   const results = await database.getAllAsync<Conjugation>(
     `SELECT id, infinitive, mood, tense, performer, performer_en, conjugated_form 
      FROM conjugations 
-     WHERE infinitive = ? 
+     WHERE infinitive = ? ${!settings.useVosotros ? "AND performer NOT LIKE '%vosotros%'" : ''}
      ORDER BY 
        CASE mood
          WHEN 'Indicativo' THEN 1
@@ -189,15 +228,24 @@ export async function generateQuizQuestions(
 ): Promise<QuizQuestion[]> {
   const database = getDatabase();
   
+  // Get settings to check if vosotros should be included
+  const settings = settingsStore.getSettings();
+  
   // Build WHERE clause based on configuration
   const conditions: string[] = [];
   const params: any[] = [];
 
-  // Specific verb or random
-  if (config.verb) {
+  // If favoritesOnly is true, filter by favorites
+  if (config.favoritesOnly && config.favoriteInfinitives && config.favoriteInfinitives.length > 0) {
+    const placeholders = config.favoriteInfinitives.map(() => '?').join(', ');
+    conditions.push(`c.infinitive IN (${placeholders})`);
+    params.push(...config.favoriteInfinitives);
+  } else if (config.verb) {
+    // Use specific verb if provided and not favorites mode
     conditions.push('c.infinitive = ?');
     params.push(config.verb);
   }
+  // If no verb and not favorites, it will select from all verbs randomly
 
   // Filter by moods
   if (config.moods && config.moods.length > 0) {
@@ -213,9 +261,14 @@ export async function generateQuizQuestions(
     params.push(...config.tenses);
   }
 
+  // Filter out vosotros/vosotras if the setting is disabled
+  if (!settings.useVosotros) {
+    conditions.push("c.performer NOT LIKE '%vosotros%'");
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  // Query conjugations
+  // Query conjugations - get ALL matching conjugations or limit if specified
   const query = `
     SELECT 
       c.infinitive,
@@ -229,10 +282,12 @@ export async function generateQuizQuestions(
     INNER JOIN verbs v ON c.infinitive = v.infinitive
     ${whereClause}
     ORDER BY RANDOM()
-    LIMIT ?
+    ${config.questionCount ? 'LIMIT ?' : ''}
   `;
 
-  params.push(config.questionCount);
+  if (config.questionCount) {
+    params.push(config.questionCount);
+  }
 
   const results = await database.getAllAsync<QuizQuestion>(query, params);
 
