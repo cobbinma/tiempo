@@ -107,6 +107,13 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
       friction: 7,
       useNativeDriver: true,
     }).start();
+
+    // Auto-advance if correct
+    if (correct) {
+      setTimeout(() => {
+        handleNext();
+      }, 1500);
+    }
   };
 
   const handleNext = () => {
