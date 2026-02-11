@@ -52,7 +52,8 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
   // Redirect if no session
   useEffect(() => {
     if (!initialSession) {
-      navigation.navigate('Home');
+      // Use replace to prevent back navigation issues
+      navigation.replace('Home');
     }
   }, [initialSession, navigation]);
   
@@ -72,6 +73,8 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
   const progress = ((session.currentQuestionIndex + 1) / session.questions.length) * 100;
 
   const handleSubmit = () => {
+    if (!session) return; // Safety check
+    
     const correct = isAnswerCorrect(userAnswer, currentQuestion.correctAnswer);
     setIsCorrect(correct);
     setShowFeedback(true);
@@ -82,6 +85,29 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
       userAnswer,
       isCorrect: correct,
     };
+
+    // Update session with new result and score
+    const updatedResults = [...session.results, result];
+    const updatedScore = correct ? session.score + 1 : session.score;
+
+    const updatedSession = {
+      ...session,
+      results: updatedResults,
+      score: updatedScore,
+    };
+
+    // Update both state and ref immediately
+    setSession(updatedSession);
+    latestSessionRef.current = updatedSession;
+
+    // Animate feedback
+    Animated.spring(feedbackScale, {
+      toValue: 1,
+      tension: 50,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  };
 
     // Update session with new result and score
     const updatedResults = [...session.results, result];
@@ -161,8 +187,10 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
           text: 'Exit',
           style: 'destructive',
           onPress: () => {
+            // Clear session first
             setCurrentSession(null);
-            navigation.navigate('Home');
+            // Use replace to prevent back navigation
+            navigation.replace('Home');
           },
         },
       ]
