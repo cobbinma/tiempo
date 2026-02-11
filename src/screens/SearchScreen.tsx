@@ -154,18 +154,21 @@ export default function SearchScreen({ navigation }: SearchScreenProps) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header with back button */}
-      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          style={[styles.backButton, { backgroundColor: colors.card }]}
+        >
+          <Text style={[styles.backButtonText, { color: colors.text }]}>←</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Search Verbs</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
-        <View style={[styles.searchWrapper, { backgroundColor: colors.background, borderColor: colors.border }]}>
+      <View style={[styles.searchContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.searchWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
@@ -238,22 +241,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.white,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.backgroundDark,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   backButtonText: {
     fontSize: FONT_SIZES.xxl,
-    color: COLORS.text,
     fontWeight: FONT_WEIGHTS.bold,
   },
   headerTitle: {
@@ -264,16 +272,23 @@ const styles = StyleSheet.create({
     width: 40,
   },
   searchContainer: {
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.lg,
   },
   searchWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.xl,
     paddingHorizontal: SPACING.md,
-    borderWidth: 2,
+    borderWidth: 1,
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   searchIcon: {
     fontSize: 20,

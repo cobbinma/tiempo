@@ -132,8 +132,8 @@ export default function CommonVerbsScreen({ navigation }: CommonVerbsScreenProps
   };
 
   const renderHeader = () => (
-    <View style={[styles.listHeader, { backgroundColor: colors.card }]}>
-      <Text style={[styles.listHeaderTitle, { color: colors.text }]}>Common Verbs</Text>
+    <View style={styles.listHeader}>
+      <Text style={[styles.listHeaderTitle, { color: colors.text }]}>🌟 Top 100 Verbs</Text>
       <Text style={[styles.listHeaderDescription, { color: colors.textLight }]}>
         Master the most frequently used verbs in Spanish conversation
       </Text>
@@ -142,13 +142,13 @@ export default function CommonVerbsScreen({ navigation }: CommonVerbsScreenProps
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { backgroundColor: colors.background }]}>
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: colors.card }]}
           >
-            <Text style={styles.backButtonText}>←</Text>
+            <Text style={[styles.backButtonText, { color: colors.text }]}>←</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Common Verbs</Text>
           <View style={styles.headerSpacer} />
@@ -159,13 +159,13 @@ export default function CommonVerbsScreen({ navigation }: CommonVerbsScreenProps
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()} 
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: colors.card }]}
         >
-          <Text style={styles.backButtonText}>←</Text>
+          <Text style={[styles.backButtonText, { color: colors.text }]}>←</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Common Verbs</Text>
         <View style={styles.headerSpacer} />
@@ -201,22 +201,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.lg,
     zIndex: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: BORDER_RADIUS.round,
-    backgroundColor: COLORS.backgroundDark,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   backButtonText: {
     fontSize: FONT_SIZES.xxl,
-    color: COLORS.text,
     fontWeight: FONT_WEIGHTS.bold,
   },
   headerTitle: {
@@ -227,21 +233,23 @@ const styles = StyleSheet.create({
     width: 40,
   },
   listContent: {
-    padding: SPACING.md,
+    padding: SPACING.lg,
     paddingBottom: SPACING.xl,
   },
   listHeader: {
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
+    marginTop: SPACING.sm,
   },
   listHeaderTitle: {
-    fontSize: FONT_SIZES.xxl,
+    fontSize: FONT_SIZES.xxxl,
     fontWeight: FONT_WEIGHTS.extrabold,
     marginBottom: SPACING.sm,
+    letterSpacing: -0.5,
   },
   listHeaderDescription: {
     fontSize: FONT_SIZES.md,
     lineHeight: 22,
-    marginBottom: SPACING.lg,
+    opacity: 0.8,
   },
   statsRow: {
     flexDirection: 'row',
