@@ -109,35 +109,6 @@ export default function QuizScreen({ navigation, route }: QuizScreenProps) {
     }).start();
   };
 
-    // Update session with new result and score
-    const updatedResults = [...session.results, result];
-    const updatedScore = correct ? session.score + 1 : session.score;
-
-    const updatedSession = {
-      ...session,
-      results: updatedResults,
-      score: updatedScore,
-    };
-
-    // Update both state and ref immediately
-    setSession(updatedSession);
-    latestSessionRef.current = updatedSession;
-
-    // Animate feedback
-    Animated.spring(feedbackScale, {
-      toValue: 1,
-      useNativeDriver: true,
-      friction: 5,
-    }).start();
-
-    // Auto-advance if correct
-    if (correct) {
-      setTimeout(() => {
-        handleNext();
-      }, 1500);
-    }
-  };
-
   const handleNext = () => {
     // Always use the latest session from ref
     const sessionToUse = latestSessionRef.current;
