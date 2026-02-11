@@ -29,35 +29,37 @@ export default function ResultsScreen({ navigation, route }: ResultsScreenProps)
   const { currentSession, setCurrentSession } = useQuizSession();
   const confettiRef = useRef<any>(null);
   
-  // Redirect if no session
-  useEffect(() => {
-    if (!currentSession) {
-      navigation.navigate('Home');
-    }
-  }, [currentSession, navigation]);
-
-  // Don't render if no session
-  if (!currentSession) {
-    return null;
-  }
-
-  const { score, results, questions } = currentSession;
-  
+  const session = currentSession;
+  const score = session?.score ?? 0;
+  const results = session?.results ?? [];
+  const questions = session?.questions ?? [];
   const totalQuestions = questions.length;
-  const percentage = Math.round((score / totalQuestions) * 100);
+  const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
   const scoreColor = getScoreColor(percentage);
   const scoreMessage = getScoreMessage(percentage);
   const isPerfectScore = percentage === 100;
+  
+  // Redirect if no session
+  useEffect(() => {
+    if (!currentSession) {
+      navigation.replace('Home');
+    }
+  }, [currentSession, navigation]);
 
   // Trigger confetti for perfect score
   useEffect(() => {
-    if (isPerfectScore && confettiRef.current) {
+    if (isPerfectScore && confettiRef.current && currentSession) {
       // Small delay to let the screen render first
       setTimeout(() => {
         confettiRef.current?.start();
       }, 300);
     }
-  }, [isPerfectScore]);
+  }, [isPerfectScore, currentSession]);
+
+  // Don't render if no session
+  if (!currentSession) {
+    return null;
+  }
 
   const handleTryAgain = () => {
     // Recreate the quiz with the same configuration
